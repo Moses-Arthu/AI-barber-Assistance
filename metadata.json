@@ -1,0 +1,9 @@
+{
+  "name": "TrimAI",
+  "description": "AI-Powered Barber Booking & Haircut Visualization Platform with real-time chat and AI hairstyle previews.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone",
+    "geolocation"
+  ]
+}

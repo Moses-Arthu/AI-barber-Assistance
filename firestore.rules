@@ -1,0 +1,114 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    // Collection: users
+    // Fields: uid, email, displayName, photoURL, role, phoneNumber, location, createdAt
+    //
+    // Collection: barbers
+    // Fields: uid, bio, portfolio, rating, reviewCount, specialties, availability, isVerified
+    //
+    // Collection: appointments
+    // Fields: id, userId, barberId, startTime, endTime, status, paymentStatus, paymentId, selectedHairstyle, notes, createdAt
+    //
+    // Collection: chats
+    // Fields: id, participants (array), lastMessage, lastTimestamp
+    //
+    // Collection: messages (subcollection of chats)
+    // Fields: id, chatId, senderId, text, imageURL, timestamp, read
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    function isAdmin() {
+      return isAuthenticated() && 
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+         (request.auth.token.email == "mosesarthur799@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    function isBarber() {
+      return isAuthenticated() && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'barber';
+    }
+
+    function isParticipant(chatId) {
+      return isAuthenticated() && 
+        request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants;
+    }
+
+    // ===============================================================
+    // Validation Functions
+    // ===============================================================
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'email', 'role', 'createdAt']) &&
+             data.uid == request.auth.uid &&
+             data.role in ['user', 'barber', 'admin'] &&
+             data.email is string &&
+             data.createdAt is number;
+    }
+
+    function isValidAppointment(data) {
+      return data.keys().hasAll(['userId', 'barberId', 'startTime', 'endTime', 'status', 'paymentStatus', 'createdAt']) &&
+             data.userId is string &&
+             data.barberId is string &&
+             data.status in ['pending', 'confirmed', 'cancelled', 'completed'] &&
+             data.paymentStatus in ['unpaid', 'paid'];
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow create: if isOwner(userId) && isValidUser(request.resource.data);
+      allow update: if isOwner(userId) && isValidUser(request.resource.data) && 
+                      request.resource.data.role == resource.data.role; // Cannot change role self
+      allow delete: if isAdmin();
+    }
+
+    match /barbers/{barberId} {
+      allow read: if true; // Publicly viewable
+      allow create, update: if isOwner(barberId) && isBarber();
+      allow delete: if isAdmin();
+    }
+
+    match /appointments/{appointmentId} {
+      allow read: if isAuthenticated() && 
+                    (request.auth.uid == resource.data.userId || request.auth.uid == resource.data.barberId || isAdmin());
+      allow create: if isAuthenticated() && 
+                      request.auth.uid == request.resource.data.userId && 
+                      isValidAppointment(request.resource.data);
+      allow update: if isAuthenticated() && 
+                      (request.auth.uid == resource.data.userId || request.auth.uid == resource.data.barberId || isAdmin()) &&
+                      isValidAppointment(request.resource.data);
+    }
+
+    match /chats/{chatId} {
+      allow read: if isAuthenticated() && request.auth.uid in resource.data.participants;
+      allow create: if isAuthenticated() && request.auth.uid in request.resource.data.participants;
+      allow update: if isAuthenticated() && request.auth.uid in resource.data.participants;
+      
+      match /messages/{messageId} {
+        allow read: if isParticipant(chatId);
+        allow create: if isParticipant(chatId) && request.auth.uid == request.resource.data.senderId;
+      }
+    }
+
+    match /{path=**} {
+      allow read, write: if false;
+    }
+  }
+}

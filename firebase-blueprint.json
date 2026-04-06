@@ -1,0 +1,111 @@
+{
+  "entities": {
+    "users": {
+      "title": "User Profile",
+      "description": "Stores user profile information including role and location.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "role": { "type": "string", "enum": ["user", "barber", "admin"] },
+        "phoneNumber": { "type": "string" },
+        "location": {
+          "type": "object",
+          "properties": {
+            "latitude": { "type": "number" },
+            "longitude": { "type": "number" },
+            "address": { "type": "string" }
+          }
+        },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["uid", "email", "role", "createdAt"]
+    },
+    "barbers": {
+      "title": "Barber Profile",
+      "description": "Extended profile for barbers with portfolio and availability.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "bio": { "type": "string" },
+        "portfolio": { "type": "array", "items": { "type": "string" } },
+        "rating": { "type": "number" },
+        "reviewCount": { "type": "number" },
+        "specialties": { "type": "array", "items": { "type": "string" } },
+        "availability": { "type": "object" },
+        "isVerified": { "type": "boolean" }
+      },
+      "required": ["uid", "bio", "availability"]
+    },
+    "appointments": {
+      "title": "Appointment",
+      "description": "Booking details between a user and a barber.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "barberId": { "type": "string" },
+        "startTime": { "type": "number" },
+        "endTime": { "type": "number" },
+        "status": { "type": "string", "enum": ["pending", "confirmed", "cancelled", "completed"] },
+        "paymentStatus": { "type": "string", "enum": ["unpaid", "paid"] },
+        "paymentId": { "type": "string" },
+        "selectedHairstyle": { "type": "string" },
+        "notes": { "type": "string" },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["userId", "barberId", "startTime", "endTime", "status", "paymentStatus", "createdAt"]
+    },
+    "chats": {
+      "title": "Chat",
+      "description": "A conversation between a user and a barber.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "participants": { "type": "array", "items": { "type": "string" } },
+        "lastMessage": { "type": "string" },
+        "lastTimestamp": { "type": "number" }
+      },
+      "required": ["participants"]
+    },
+    "messages": {
+      "title": "Message",
+      "description": "A single message within a chat.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "chatId": { "type": "string" },
+        "senderId": { "type": "string" },
+        "text": { "type": "string" },
+        "imageURL": { "type": "string" },
+        "timestamp": { "type": "number" },
+        "read": { "type": "boolean" }
+      },
+      "required": ["chatId", "senderId", "text", "timestamp"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "users",
+      "description": "User profile document."
+    },
+    "/barbers/{barberId}": {
+      "schema": "barbers",
+      "description": "Barber profile document."
+    },
+    "/appointments/{appointmentId}": {
+      "schema": "appointments",
+      "description": "Appointment document."
+    },
+    "/chats/{chatId}": {
+      "schema": "chats",
+      "description": "Chat metadata document."
+    },
+    "/chats/{chatId}/messages/{messageId}": {
+      "schema": "messages",
+      "description": "Messages within a chat."
+    }
+  }
+}
